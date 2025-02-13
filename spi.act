@@ -1,0 +1,40 @@
+template<pint NCS>
+deftype spi_cfg(bool cpol, cpha; enum<NCS> cs) { }
+// is there a better way to encode this?
+deftype spi_rw(bool read, write) { }
+
+template<pint N, NCS>
+defproc spi(chan(spi_cfg<NCS>)? CFG; chan(spi_rw)? RW; bool! cs[NCS]; chan(int<N>)? INP; chan(int<N>)! OUTP; bool? miso; bool! mosi) {
+  spi_cfg<NCS> cfg;
+  spi_rw rw;
+  int<N> data;
+  chp {
+    CFG?cfg
+  }
+  *[ true ->
+    chp {
+      [| #CFG -> CFG?cfg |];
+
+      RW?rw;
+
+      [ ~rw.write -> skip
+      [] rw.write -> INP?data
+      ],
+      (,i:NCS : [i = cfg.cs -> cs[i]- [] i != cfg.cs -> cs[i]+ ])
+    }
+
+    // "trivial"
+    prs {
+
+    }
+
+    chp {
+      [ ~rw.read -> skip
+      [] rw.read -> OUTP!data
+      ],
+
+      // do we definitely want to do this?
+      (,i:NCS : cs[i]-)
+    }
+  ]
+}
