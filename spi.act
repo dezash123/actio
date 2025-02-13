@@ -1,9 +1,18 @@
+/* Problems with this implementation:
+only handles standard SPI
+- we should have parametrized multi-line SPI
+can only handle 1 exchange at a time
+- we maybe want a process that wraps around this to send multiple bytes sequentially (without re-raising CS)
+still needs PRS internals
+*/
+
+// are there better ways to encode these?
 template<pint NCS>
 deftype spi_cfg(bool cpol, cpha; enum<NCS> cs) { }
-// is there a better way to encode this?
 deftype spi_rw(bool read, write) { }
 
 template<pint N, NCS>
+// should INP and OUTP be combined into an exchange channel?
 defproc spi(chan(spi_cfg<NCS>)? CFG; chan(spi_rw)? RW; bool! cs[NCS]; chan(int<N>)? INP; chan(int<N>)! OUTP; bool? miso; bool! mosi) {
   spi_cfg<NCS> cfg;
   spi_rw rw;

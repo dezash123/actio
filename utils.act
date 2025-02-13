@@ -1,0 +1,8 @@
+defproc counted_flipflop(bool? in_data, in_count, advance; bool! out_data, in_count) {
+  bool latch1;
+  bool latch2;
+
+  prs {
+    advance & in_count #> out_count+
+  }
+}
