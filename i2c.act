@@ -1,0 +1,4 @@
+// how to do tri-state?
+defproc i2c_host(bool! scl; bool? fb; bool sda; chan?(int) IN; chan!(int) OUT) {
+  
+}

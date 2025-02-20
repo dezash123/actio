@@ -1,8 +1,35 @@
-defproc counted_flipflop(bool? in_data, in_count, advance; bool! out_data, in_count) {
-  bool latch1;
-  bool latch2;
-
+// are there standard versions of these?
+defproc jk_flip_flop(bool? clk, j, k, rst; bool q, nq) {
+  bool a, b;
   prs {
-    advance & in_count #> out_count+
+    nq & j & clk => a-
+    q & k & clk => b-
+    nq & a => q-
+    q & b => nq-
+  }
+}
+
+defproc t_flip_flop(bool? clk, t, rst; bool q, nq) {
+  jk_flip_flop ff;
+  ff.j = t;
+  ff.k = t;
+  ff.q = q;
+  ff.nq = nq;
+  ff.clk = clk;
+}
+
+// N-bit counter
+template<pint N>
+defproc counter(bool? clk; bool! done) {
+  t_flip_flop ff[N];
+  chp {
+    (,i:N:ff[i].t+)
+  }
+  (i:N-1: ff[i+1].clk = ff[i].nq;)
+  ff[0].clk = clk;
+  bool edge_lag;
+  prs {
+    ff[N-1].q => edge_lag-
+    edge_lag | ff[N-1].q => done+
   }
 }
