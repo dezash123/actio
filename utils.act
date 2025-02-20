@@ -1,35 +1,44 @@
-// are there standard versions of these?
-defproc jk_flip_flop(bool? clk, j, k, rst; bool q, nq) {
-  bool a, b;
+// // are there standard versions of these?
+// defproc jk_flip_flop(bool? clk, j, k, rst; bool q, nq) {
+//   bool _a, _b;
+//   prs {
+//     nq & j & clk => _a-
+//     q & k & clk => _b-
+//     nq & _a => q-
+//     q & _b => nq-
+//   }
+// }
+// 
+// defproc t_flip_flop(bool? clk, t, rst; bool q, nq) {
+//   jk_flip_flop ff;
+//   ff.j = t;
+//   ff.k = t;
+//   ff.q = q;
+//   ff.nq = nq;
+//   ff.clk = clk;
+// }
+// 
+defproc counter_section(bool? clk, en; bool q, nq) {
+  bool _a, _b;
   prs {
-    nq & j & clk => a-
-    q & k & clk => b-
-    nq & a => q-
-    q & b => nq-
+    nq & clk => _a-
+    q & clk => _b-
+    nq & _a & en => q-
+    q & _b => nq-
   }
-}
-
-defproc t_flip_flop(bool? clk, t, rst; bool q, nq) {
-  jk_flip_flop ff;
-  ff.j = t;
-  ff.k = t;
-  ff.q = q;
-  ff.nq = nq;
-  ff.clk = clk;
 }
 
 // N-bit counter
 template<pint N>
-defproc counter(bool? clk; bool! done) {
-  t_flip_flop ff[N];
-  chp {
-    (,i:N:ff[i].t+)
-  }
-  (i:N-1: ff[i+1].clk = ff[i].nq;)
-  ff[0].clk = clk;
-  bool edge_lag;
-  prs {
-    ff[N-1].q => edge_lag-
-    edge_lag | ff[N-1].q => done+
-  }
+defproc counter(bool? clk, en; bool! done) {
+  // there's probably a better way to do this
+  counter_section c[N+1];
+
+  (i:N: c[i+1].clk = c[i].nq;)
+  (i:N+1: c[i].en = en;)
+
+  c[0].clk = clk;
+  c[N].q = done;
 }
+
+

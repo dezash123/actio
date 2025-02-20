@@ -1,10 +1,10 @@
 import std;
+import "utils.act";
 /* Problems with this implementation:
 only handles standard SPI
 - we should have parametrized multi-line SPI
 can only handle 1 exchange at a time
 - we maybe want a process that wraps around this to send multiple bytes sequentially (without re-raising CS)
-still needs PRS internals
 */
 
 // are there better ways to encode these?
@@ -14,18 +14,30 @@ deftype spi_rw(bool read, write) { }
 
 // N stored bits; NCS cs lines
 template<pint N, NCS>
-defproc spi_host(chan(spi_cfg<NCS>)? CFG; chan(spi_rw)? RW; bool! cs[NCS]; chan(int<N>)? INP; chan(int<N>)! OUTP; bool? miso; bool! mosi) {
+defproc spi_host(chan(spi_cfg<NCS>)? CFG; chan(spi_rw)? RW; bool! cs[NCS]; chan(int<N>)? INP; chan(int<N>)! OUTP; bool? miso, fb; bool! mosi, clk) {
   spi_cfg<NCS> cfg;
   spi_rw rw;
   int<N> data;
-  int<std::ceil_log2(N)> counter;
+  // this only goes to a power of 2; we could check all bits of the counter 
+  counter<std::ceil_log2(N)> counter;
+  bool! _clk;
+  bool? _fb;
+
+  prs {
+    _clk | cfg.cpol => clk+
+    fb | cfg.cpol => _fb+
+    _clk | cfg.cpha => counter.clk+
+  }
+
   chp {
+    counter.en-;
 
     (,i:NCS : cs[i]+),
-    counter := 0,
+
     CFG?cfg;
 
     *[
+
       [| #CFG -> CFG?cfg |],
 
       RW?rw;
@@ -35,19 +47,25 @@ defproc spi_host(chan(spi_cfg<NCS>)? CFG; chan(spi_rw)? RW; bool! cs[NCS]; chan(
       ],
 
       cs[cfg.cs]-,
+      counter.en+;
+      _clk-;
 
-      // will this compile to the "right" implementation?
-      *[ counter != N ->
+      *[ ~counter.done ->
+        [~_fb];
+        // this is probably not the way to do this
         mosi := bool(data{0});
         data := data >> 1;
-        data{N-1} := int(miso)
+        data{N-1} := int(miso),
+        _clk+,
+        [_fb];
+        _clk-
       ];
+
+      counter.en-,
 
       [ ~rw.read -> skip
       [] rw.read -> OUTP!data
       ],
-
-      counter := 0,
 
       cs[cfg.cs]+
     ]
